@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:mirrors';
 import 'package:recase/recase.dart';
 import 'package:shelf/shelf.dart' as shelf;
@@ -15,6 +16,10 @@ class _Namespace {
 class _RouterBuilder {
   final Router shelfRouter = router();
   _Namespace previousNamespace;
+
+  _RouterBuilder() {
+    Zone.current[#RlfZoneData][#router] = shelfRouter;
+  }
 
   void get(String path, Type controller, Symbol controllerFunction) {
     setupRoute('GET', path, controller, controllerFunction);

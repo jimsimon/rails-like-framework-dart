@@ -1,13 +1,25 @@
+import 'dart:async';
 import 'package:rlf/routing.dart';
-import 'package:shelf/shelf_io.dart';
+import 'package:rlf/rlf.dart';
 
 void main() {
-  namespace('api/v1', () {
-    resource(TestController, () {
-      resource(OtherController);
-    });
+  runZoned(() {
+    Rlf rlf = new Rlf();
+    rlf.start();
+  }, zoneValues: <Symbol, dynamic>{
+    #RlfZoneData: <Symbol, dynamic>{}
   });
-  serve(routerBuilder.handler, 'localhost', 8080);
+}
+
+class ExampleApplication implements Application {
+  @override
+  void setupRoutes () {
+    namespace('api/v1', () {
+      resource(TestController, () {
+        resource(OtherController);
+      });
+    });
+  }
 }
 
 class TestController {
