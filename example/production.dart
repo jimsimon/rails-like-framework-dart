@@ -1,43 +1,34 @@
 import 'dart:developer';
 import 'dart:async';
-import 'dart:isolate';
+import 'dart:isolate' as i;
 import 'dart:io';
 import 'package:path/path.dart';
 import 'package:rlf/rlf.dart';
-import 'package:vm_service_client/vm_service_client.dart';
+import 'package:vm_service_lib/vm_service_lib.dart';
+import 'package:vm_service_lib/vm_service_lib_io.dart';
+import 'package:rlf/src/application.dart'; // TODO: Figure out how to load this dynamically
 
 void main() async {
   Rlf rlf = new Rlf();
   rlf.reloadApplication();
   rlf.start();
 
-  VMServiceClient client =
-      new VMServiceClient.connect((await Service.getInfo()).serverUri);
-  VM vm = await client.getVM();
-  VMRunnableIsolate runnableIsolate =
-      await getRunnableIsolate(vm, Isolate.current);
+  Uri serviceUri = (await Service.getInfo()).serverUri;
+  VmService client = await vmServiceConnect(serviceUri.host, serviceUri.port);
 
   Stream<FileSystemEvent> fileSystemStream = Directory.current.watch(recursive: true);
   fileSystemStream.listen((FileSystemEvent event) {
     String relativePath = relative(event.path, from: Directory.current.uri.path);
     if (!relativePath.startsWith('.')) {
-      print('Detected file change, reloading sources...');
-      runnableIsolate.reloadSources(force: true).then((dynamic report) {
-        rlf.reloadApplication();
-        print(report);
+      String isolatedId = Service.getIsolateID(i.Isolate.current);
+      client.reloadSources(isolatedId, force: true).then((ReloadReport report) {
+        if (report.success) {
+          print('Succesfully hot reloaded application');
+          rlf.reloadApplication();
+        } else {
+          print('Hot reload failed! You may need to restart you application if this keeps happening');
+        }
       });
     }
   });
-}
-
-Future<VMRunnableIsolate> getRunnableIsolate(VM vm, Isolate isolate) async {
-  final isolates = await vm.isolates;
-
-  // Find the isolate that we are running in.
-  final isolateId = Service.getIsolateID(isolate);
-  final serviceIsolate = isolates.firstWhere(
-      (isolate) => 'isolates/${isolate.numberAsString}' == isolateId);
-
-  final runnable = await serviceIsolate.loadRunnable();
-  return runnable;
 }
