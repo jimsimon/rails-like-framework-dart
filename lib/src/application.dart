@@ -1,20 +1,15 @@
-import 'dart:async';
-import 'package:rlf/routing.dart';
 import 'package:rlf/rlf.dart';
-
-void main() {
-  runZoned(() {
-    Rlf rlf = new Rlf();
-    rlf.start();
-  }, zoneValues: <Symbol, dynamic>{
-    #RlfZoneData: <Symbol, dynamic>{}
-  });
-}
+import 'package:rlf/routing.dart';
 
 class ExampleApplication implements Application {
   @override
-  void setupRoutes () {
+  Type get routeDefinition => ExampleRouteDefinition;
+}
+
+class ExampleRouteDefinition extends RouteDefinition {
+  void routes () {
     namespace('api/v1', () {
+      get('/simple', SimpleController, #blah);
       resource(TestController, () {
         resource(OtherController);
       });
@@ -24,7 +19,7 @@ class ExampleApplication implements Application {
 
 class TestController {
   Response index(Request req) {
-    return new Response.ok("Test Controller");
+    return new Response.ok("Test Controllers");
   }
 }
 
@@ -32,5 +27,11 @@ class OtherController {
   Response index(Request req) {
     return new Response.ok(
         'Other Controller: ${req.getPathParameterAsInt('testId')}');
+  }
+}
+
+class SimpleController {
+  Response blah(Request req) {
+    return new Response.ok('simple kk');
   }
 }

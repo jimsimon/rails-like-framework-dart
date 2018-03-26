@@ -1,14 +1,20 @@
 import 'dart:mirrors';
 import 'dart:async';
+import 'dart:io';
+import 'package:rlf/routing.dart';
+import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf_route/shelf_route.dart';
 import 'package:shelf/shelf_io.dart';
 
 abstract class Application {
-  void setupRoutes();
+  Type get routeDefinition;
 }
 
 class Rlf {
-  Rlf() {
+
+  Router _shelfRouter;
+
+  void reloadApplication () {
     MirrorSystem ms = currentMirrorSystem();
     Iterable<LibraryMirror> libraries = ms.libraries.values;
     for (LibraryMirror lib in libraries) {
@@ -20,16 +26,16 @@ class Rlf {
           var arguments = <String>[];
           InstanceMirror im = dec.newInstance(constructor, arguments);
           Application application = im.reflectee;
-          application.setupRoutes();
+          ClassMirror routesCm = reflectClass(application.routeDefinition);
+          RouteDefinition routeDefinition = routesCm.newInstance(constructor, arguments).reflectee;
+          _shelfRouter = routeDefinition.shelfRouter;
           return;
         }
       }
     }
   }
 
-  Router get _shelfRouter => Zone.current[#RlfZoneData][#router] as Router;
-
-  void start() {
-    serve(_shelfRouter.handler, 'localhost', 8080);
+  Future<HttpServer> start() async {
+    return await serve((shelf.Request req) => _shelfRouter.handler(req), 'localhost', 8080);
   }
 }
